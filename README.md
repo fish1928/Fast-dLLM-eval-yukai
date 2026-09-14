@@ -1,193 +1,127 @@
-# Fast-dLLM
+# Fast-dLLM v1: Training-free Acceleration of Diffusion LLM
+
 [![Project](https://img.shields.io/static/v1?label=Project&message=Github&color=blue&logo=github-pages)](https://nvlabs.github.io/Fast-dLLM)
-[![arXiv v1](https://img.shields.io/badge/Paper-v1-red.svg)](https://arxiv.org/abs/2505.22618)
-[![arXiv v2](https://img.shields.io/badge/Paper-v2-red.svg)](https://arxiv.org/abs/2509.26328)
-[![arXiv dVLM](https://img.shields.io/badge/Paper-dVLM-red.svg)](https://arxiv.org/abs/2604.06832)
-[![arXiv dDrive](https://img.shields.io/badge/Paper-dDrive-red.svg)](https://arxiv.org/abs/2605.23163)
+[![arXiv](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/abs/2505.22618)
 <a href="https://fast-dllm.hanlab.ai"><img src="https://img.shields.io/static/v1?label=Demo&message=Fast-dLLM&color=yellow"></a> &ensp;
 
-<h4 align="center"> ICLR 2026 </h4>
+Fast-dLLM v1 is a **training-free** inference acceleration framework for diffusion-based Large Language Models (dLLMs). It supports efficient inference for models like **Dream** and **LLaDA** by enabling KV Cache and Parallel Decoding.
 
-Fast-dLLM is a family of acceleration techniques for diffusion-based Large Language Models (dLLMs), Vision-Language Models (dVLMs), and Vision-Language-Action (VLA) models. This repository contains:
+## Key Features
 
-| | Fast-dLLM v1 | Fast-dLLM v2 | Fast-dVLM | Fast-dDrive |
-|---|---|---|---|---|
-| **Paper** | [Training-free Acceleration of Diffusion LLM](https://arxiv.org/abs/2505.22618) | [Efficient Block-Diffusion LLM](https://arxiv.org/abs/2509.26328) | [Block-Diffusion VLM via Direct Conversion](https://arxiv.org/abs/2604.06832) | [Efficient Block-Diffusion VLM for Autonomous Driving](https://arxiv.org/abs/2605.23163) |
-| **Modality** | Text | Text | Vision + Text | Vision + Text + Action (driving) |
-| **Approach** | Training-free inference acceleration | Block diffusion with fine-tuning | Direct AR-to-diffusion VLM conversion | Section-aware block diffusion + scaffold speculative decoding |
-| **Backbone** | [Dream](https://github.com/dream-project/dream), [LLaDA](https://github.com/llada-project/llada) | [Qwen2.5](https://github.com/QwenLM/Qwen2.5) | [Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL) | [Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL) |
-| **Key Techniques** | KV Cache + Parallel Decoding | Block Diffusion + Hierarchical Caching | Block-Size Annealing + Speculative Decoding | SASD Training + Scaffold Spec + Test-Time Inference Scaling |
-| **Code** | [`v1/`](v1/) | [`v2/`](v2/) | [`fast_dvlm/`](fast_dvlm/) | [`fast_ddrive/`](fast_ddrive/) |
-| **Model** | — | [Fast_dLLM_v2_7B](https://huggingface.co/Efficient-Large-Model/Fast_dLLM_v2_7B) | [Fast_dVLM_3B](https://huggingface.co/Efficient-Large-Model/Fast_dVLM_3B) | [Fast-dDrive](https://huggingface.co/Efficient-Large-Model/Fast-dDrive) |
+1. **Key-Value Cache for Block-Wise Decoding**
+   We propose an efficient block-wise decoding KV Cache mechanism for Masked Diffusion Models (MDMs). By reusing attention Key-Value activations across multiple steps within each block, our approach avoids redundant computation and significantly accelerates inference. Furthermore, our DualCache extension also caches masked suffix tokens, enabling even greater speedup with negligible accuracy loss.
 
-## News
-* (🔥 New) [2026/05/26] **Fast-dDrive** is released! Section-Aware Structured Diffusion VLA for end-to-end autonomous driving on Waymo (WOD-E2E). Combines Scaffold Speculative Decoding with SASD training for SOTA ADE / RFS at over 200 TPS on a single H100 (up to **12x** over the AR baseline with SGLang). Check out [`fast_ddrive/`](fast_ddrive/), the [model](https://huggingface.co/Efficient-Large-Model/Fast-dDrive), and the [paper](https://arxiv.org/abs/2605.23163).
-* [2026/04/10] **Fast-dVLM** is released! Up to **6.18x speedup** over AR baseline while matching quality across 11 benchmarks. Check out our [webpage](https://nvlabs.github.io/Fast-dLLM/fast_dvlm/), [model](https://huggingface.co/Efficient-Large-Model/Fast_dVLM_3B), and [paper](https://arxiv.org/abs/2604.06832)!
-* (🔥 New) [2026/01/26] **Fast-dLLM v1/v2 is accepted by ICLR-2026.** 🎉🎉🎉
-* \[2025.10.08\] We have open sourced Fast-dLLM v2. Have a look at our [webpage](https://nvlabs.github.io/Fast-dLLM/v2/), [model](https://huggingface.co/Efficient-Large-Model/Fast_dLLM_v2_7B), and [paper](https://arxiv.org/pdf/2509.26328)!
-* \[2025.08.01\] Our new online demo of Fast-dLLM: https://fast-dllm.hanlab.ai/, welcome to try!
-* \[2025.07.06\] Added factor-based parallel strategy and LLaDA-1.5 evaluation in `v1/llada/eval_gsm8k.sh`.
-* \[2025.07.04\] We updated our paper with latest improvements and evaluation results.
-* \[2025.06.30\] Fast-dLLM has been integrated into [LLaDA-V](https://github.com/ML-GSAI/LLaDA-V). With Fast-dLLM, it accelerates the inference latency from 60s to 6s! Have a try [here](https://github.com/ML-GSAI/LLaDA-V/blob/main/train/generate_demo.py)!!
+<div align="center">
+  <img src="asset/kvcache.jpg" alt="KV Cache for block-wise decoding" width="800"/>
+  <p>KV Cache for block-wise decoding</p>
+</div>
 
-## TODOs
-- \[✅\] Inference and evaluation code
-- \[✅\] Training code of Fast-dLLM v2
-- \[✅\] Fast-dVLM: Block-diffusion VLM
-- \[✅\] Fast-dDrive: Block-diffusion VLA for autonomous driving
-- \[🚀\] vLLM support
+2. **Confidence-Aware Parallel Decoding**
+   Instead of decoding tokens sequentially, we introduce a confidence-aware parallel decoding scheme. At each step, only tokens with confidence over a threshold are unmasked in parallel, while uncertain ones remain masked for future steps. This selective approach effectively balances decoding efficiency and output quality.
 
-## Project Structure
+<div align="center">
+  <img src="asset/output.gif" alt="Decoding comparison" width="800"/>
+  <p><b>Left:</b> Standard decoding (LLaDA). <b>Right:</b> Confidence-aware parallel decoding.</p>
+</div>
+
+<div align="center">
+  <img src="asset/pseudo_code.jpg" alt="Pseudo code for our method" width="800"/>
+  <p>Pseudo code for our method</p>
+</div>
+
+3. **Overall Performance**
+   Overall, introducing the KV Cache mechanism yields significant speed improvements for all tasks and sequence lengths, typically achieving a 2x to 3.6x speedup compared to the vanilla backbone. When the parallel decoding strategy is applied individually, we see additional acceleration, often pushing speedups to 4x-6x for the evaluated settings, particularly as the generation length increases.
+
+<div align="center">
+  <img src="asset/overall_performance.jpg" alt="Overall performance" width="800"/>
+  <p>Overall performance comparison</p>
+</div>
+
+## Demo
+
+https://github.com/user-attachments/assets/32bbff97-6e60-4e14-95c0-2cbec136476f
+
+<div align="center">
+  <img src="asset/speedup.jpg" alt="End-to-end speedup over vanilla LLaDA baseline" width="800"/>
+  <p>End-to-end speedup over vanilla LLaDA baseline</p>
+</div>
+
+## File Structure
 
 ```
-Fast-dLLM/
-├── v1/                     # Fast-dLLM v1: Training-free acceleration (LLM)
-│   ├── dream/              #   Dream model support
-│   ├── llada/              #   LLaDA model support
-│   ├── requirements.txt
-│   └── README.md
-├── v2/                     # Fast-dLLM v2: Block diffusion (LLM)
-│   ├── src/                #   LMFlow training framework
-│   ├── train_scripts/      #   Fine-tuning scripts
-│   ├── configs/            #   DeepSpeed configs
-│   ├── generation_functions.py
-│   ├── eval.py / eval_script.sh
-│   ├── app.py / run_chatbot.py
-│   ├── requirements.txt
-│   └── README.md
-├── fast_dvlm/              # Fast-dVLM: Block-diffusion VLM (chatbot, optional finetune sample, VLMEval; see fast_dvlm/README.md)
-├── fast_ddrive/            # Fast-dDrive: Block-diffusion VLA for autonomous driving on Waymo E2E (see fast_ddrive/README.md)
-├── CONTRIBUTING.md
-├── LICENSE
-└── README.md               # This file
+v1/
+├── README.md               # This file
+├── requirements.txt        # Dependencies for inference & evaluation
+├── dream/                  # Dream model related code
+│   ├── model/              # Dream model definition
+│   ├── eval.py             # Evaluation harness integration
+│   ├── eval.md             # Evaluation guide
+│   ├── eval_gsm8k.sh       # GSM8K evaluation script
+│   ├── eval_humaneval.sh   # HumanEval evaluation script
+│   └── demo_multiturn_chat.py  # Multi-turn chat demo
+└── llada/                  # LLaDA model related code
+    ├── model/              # LLaDA model definition
+    ├── generate.py         # Core generation with cache & parallel decoding
+    ├── eval_llada.py       # Evaluation harness integration
+    ├── eval.md             # Evaluation guide
+    ├── eval_gsm8k.sh       # GSM8K evaluation script
+    ├── eval_humaneval.sh   # HumanEval evaluation script
+    ├── chat.py             # Command-line chat interface
+    └── app.py              # Gradio web demo
 ```
 
-## Quick Start
-
-### Fast-dLLM v1 (Training-free Acceleration)
+## Installation
 
 ```bash
 cd v1
 pip install -r requirements.txt
+```
 
-# LLaDA interactive chat
+## Usage
+
+### 1. Using LLaDA Model
+
+#### Interactive Chat
+```bash
 python llada/chat.py --gen_length 128 --steps 128 --block_size 32
-
-# Dream evaluation
-accelerate launch dream/eval.py --model dream \
-    --model_args pretrained=Dream-org/Dream-v0-Base-7B,max_new_tokens=256,diffusion_steps=8,add_bos_token=true,alg=confidence_threshold,threshold=0.9,use_cache=true \
-    --tasks gsm8k --num_fewshot 5 --batch_size 1
 ```
 
-For full details, see [v1/README.md](v1/README.md).
+Parameter descriptions:
+- `--gen_length`: Maximum length of generated text
+- `--steps`: Number of sampling steps
+- `--block_size`: Cache block size
+- `--use_cache`: Whether to use cache
+- `--if_cache_position`: Whether to use dual cache
+- `--threshold`: Confidence threshold
 
-### Fast-dLLM v2 (Block Diffusion)
-
+#### Web Demo
 ```bash
-cd v2
-pip install -e .
-
-# Gradio web demo
+pip install gradio
+cd llada
 python app.py
-
-# Evaluation
-bash eval_script.sh
 ```
 
-For full details, see [v2/README.md](v2/README.md).
+#### Model Evaluation
+| Benchmark         | Gen Length | LLaDA   | +Cache         | +Parallel      | +Cache+Parallel (Fast-dLLM) |
+|-------------------|------------|---------|----------------|----------------|-----------------------------|
+| **GSM8K (5-shot)**| 256        | 79.3<br>6.73<br>(1×) | 79.5<br>21.23<br>(3.2×) | 79.2<br>16.53<br>(2.5×) | 78.5<br>**54.4<br>(8.1×)** |
+|                   | 512        | 77.5<br>3.23<br>(1×) | 77.0<br>10.43<br>(3.3×) | 77.6<br>18.63<br>(5.8×) | 77.2<br>**35.3<br>(11.0×)** |
+| **HumanEval (0-shot)** | 256   | 41.5<br>30.5 (1×) | 42.7<br>40.73<br>(1.3×) | 43.9<br>101.53<br>(3.3×) | 43.3<br>**114.1<br>(3.7×)** |
+|                   | 512        | 43.9<br>18.4 (1×) | 45.7<br>29.33<br>(1.6×) | 43.3<br>57.13<br>(3.1×) | 44.5<br>**73.7<br>(4.0×)** |
 
-### Fast-dVLM (Block-Diffusion VLM)
+Each cell presents the accuracy (top row, in percentage) and the decoding throughput (middle row, in tokens per second) with relative speedup (bottom row) to the LLaDA baseline.
 
-```bash
-cd fast_dvlm
-pip install -r requirements.txt
+For detailed evaluation instructions, please refer to:
+- [LLaDA Evaluation Guide](llada/eval.md)
+- [Dream Evaluation Guide](dream/eval.md)
 
-# Quick inference
-python run_chatbot.py \
-    --model-name Efficient-Large-Model/Fast_dVLM_3B \
-    --image path/to/image.jpg \
-    --prompt "Describe this image in detail."
+### 2. Using Dream Model
 
-# Interactive mode
-python run_chatbot.py
-```
-
-**Fine-tuning (optional example):** multimodal MDM training uses DeepSpeed + the LMFlow fork under [`third_party/`](third_party/) (the launcher sets `PYTHONPATH` for you). Download [ALLaVA-4V](https://huggingface.co/datasets/FreedomIntelligence/ALLaVA-4V) with `fast_dvlm/data/download_example_dataset.sh`, then run `bash fast_dvlm/train_scripts/finetune_multimodal_example.sh` from the repo root—see [Fine-tuning (example launcher)](fast_dvlm/README.md#fine-tuning-example-launcher) in [fast_dvlm/README.md](fast_dvlm/README.md).
-
-For full details, see [fast_dvlm/README.md](fast_dvlm/README.md).
-
-### Fast-dDrive (Block-Diffusion VLA for Autonomous Driving)
-
-```bash
-cd fast_ddrive
-pip install -r requirements.txt
-
-# Single-shot demo: Scaffold Spec decoding on one driving frame.
-python run_chatbot.py \
-    --model_path Efficient-Large-Model/Fast-dDrive \
-    --image data/example/images/161_CAM_FRONT.jpg \
-    --prompt "Describe the driving scene and produce a 5-second plan."
-
-# Waymo E2E validation eval (paper canonical Scaffold Spec, multi-GPU).
-MODEL_PATH=Efficient-Large-Model/Fast-dDrive EVAL_JSON=/path/to/waymo_val.json \
-    IMAGE_ROOT=/path/to/image_root bash run_eval.sh
-```
-
-Three decoding paths are exposed via `--mode` / `MODE`:
-`section_diffusion` (SD), `scaffold_spec` (SS — paper canonical), and
-`inference_scaling` (SS multi-trajectory rollouts).
-
-**Fine-tuning (SASD):** mirrors the fast_dvlm DeepSpeed launcher and reuses the
-same vendored LMFlow under [`third_party/`](third_party/) (with a small set of
-pure-addition SASD hooks). Provide a Waymo training JSON + image root, then:
-
-```bash
-DATASET_PATH=/path/to/waymo_train.json IMAGE_FOLDER=/path/to/image_root \
-    bash fast_ddrive/train_scripts/train_waymo_sasd.sh
-```
-
-For full details, see [fast_ddrive/README.md](fast_ddrive/README.md).
-
-## Contributing
-
-Issues and Pull Requests are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-## License
-
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+For detailed evaluation instructions on GSM8K and HumanEval benchmarks, please refer to [Dream Evaluation Guide](dream/eval.md).
 
 ## Citation
 
-If you find this work useful, please cite our papers:
-
 ```bibtex
-@misc{zhang2026fastddriveefficientblockdiffusionvlm,
-      title={Fast-dDrive: Efficient Block-Diffusion VLM for Autonomous Driving},
-      author={Kewei Zhang and Jin Wang and Sensen Gao and Chengyue Wu and Yulong Cao and Songyang Han and Boris Ivanovic and Langechuan Liu and Marco Pavone and Song Han and Daquan Zhou and Enze Xie},
-      year={2026},
-      eprint={2605.23163},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2605.23163},
-}
-@misc{wu2026fastdvlmefficientblockdiffusionvlm,
-      title={Fast-dVLM: Efficient Block-Diffusion VLM via Direct Conversion from Autoregressive VLM},
-      author={Chengyue Wu and Shiyi Lan and Yonggan Fu and Sensen Gao and Jin Wang and Jincheng Yu and Jose M. Alvarez and Pavlo Molchanov and Ping Luo and Song Han and Ligeng Zhu and Enze Xie},
-      year={2026},
-      eprint={2604.06832},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2604.06832},
-}
-@misc{wu2025fastdllmv2efficientblockdiffusion,
-      title={Fast-dLLM v2: Efficient Block-Diffusion LLM}, 
-      author={Chengyue Wu and Hao Zhang and Shuchen Xue and Shizhe Diao and Yonggan Fu and Zhijian Liu and Pavlo Molchanov and Ping Luo and Song Han and Enze Xie},
-      year={2025},
-      eprint={2509.26328},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2509.26328}, 
-}
 @misc{wu2025fastdllmtrainingfreeaccelerationdiffusion,
       title={Fast-dLLM: Training-free Acceleration of Diffusion LLM by Enabling KV Cache and Parallel Decoding}, 
       author={Chengyue Wu and Hao Zhang and Shuchen Xue and Zhijian Liu and Shizhe Diao and Ligeng Zhu and Ping Luo and Song Han and Enze Xie},
@@ -201,4 +135,4 @@ If you find this work useful, please cite our papers:
 
 ## Acknowledgements
 
-We would like to thank the authors of [LLaDA](https://github.com/llada-project/llada) and [Dream](https://github.com/dream-project/dream) for their excellent work and open-source contributions. We thank [Qwen2.5](https://github.com/QwenLM/Qwen2.5) and [Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL) for the base model architectures and [LMFlow](https://github.com/OptimalScale/LMFlow) for the training framework.
+We would like to thank the authors of [LLaDA](https://github.com/llada-project/llada) and [Dream](https://github.com/dream-project/dream) for their excellent work and open-source contributions.
