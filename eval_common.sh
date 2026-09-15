@@ -28,6 +28,13 @@
 #      FOLDER_OUT
 #################################################
 
+# DEVICE convenience (same convention as the dllm-meta scripts): DEVICE=cuda:1
+# maps to CUDA_VISIBLE_DEVICES=1; an explicitly set CUDA_VISIBLE_DEVICES wins.
+DEVICE=${DEVICE:-}
+if [ -n "$DEVICE" ] && [ -z "${CUDA_VISIBLE_DEVICES:-}" ]; then
+    export CUDA_VISIBLE_DEVICES="${DEVICE#cuda:}"
+fi
+
 export HF_ALLOW_CODE_EVAL=1
 export HF_DATASETS_TRUST_REMOTE_CODE=true
 
