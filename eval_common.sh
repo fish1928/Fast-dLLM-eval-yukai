@@ -29,10 +29,24 @@
 #################################################
 
 # DEVICE convenience (same convention as the dllm-meta scripts): DEVICE=cuda:1
-# maps to CUDA_VISIBLE_DEVICES=1; an explicitly set CUDA_VISIBLE_DEVICES wins.
+# pins this run to ONE gpu and always wins (an inherited CUDA_VISIBLE_DEVICES
+# from a jupyter/scheduler session is not a per-run choice). If the session
+# already restricts CUDA_VISIBLE_DEVICES (e.g. "2,3"), cuda:N selects the N-th
+# entry of that list -- matching torch device numbering, which is relative to
+# the visible set.
 DEVICE=${DEVICE:-}
-if [ -n "$DEVICE" ] && [ -z "${CUDA_VISIBLE_DEVICES:-}" ]; then
-    export CUDA_VISIBLE_DEVICES="${DEVICE#cuda:}"
+if [ -n "$DEVICE" ]; then
+    _idx="${DEVICE#cuda:}"
+    if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
+        IFS=',' read -r -a _gpus <<< "$CUDA_VISIBLE_DEVICES"
+        if [ "$_idx" -ge "${#_gpus[@]}" ]; then
+            echo "[error] DEVICE=$DEVICE but CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES has only ${#_gpus[@]} gpu(s)"; exit 1
+        fi
+        export CUDA_VISIBLE_DEVICES="${_gpus[$_idx]}"
+    else
+        export CUDA_VISIBLE_DEVICES="$_idx"
+    fi
+    echo "[device] DEVICE=$DEVICE -> CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
 fi
 
 export HF_ALLOW_CODE_EVAL=1
