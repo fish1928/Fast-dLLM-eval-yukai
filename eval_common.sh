@@ -59,6 +59,22 @@ RUN_BASELINE=${RUN_BASELINE:-1}
 RUN_CACHE=${RUN_CACHE:-1}
 THRESHOLD=${THRESHOLD:-0.9}
 
+# LIMIT is a per-TASK budget. lm_eval applies --limit per SUBTASK, so group
+# tasks would silently multiply it (minerva_math x7 subtasks, bbh x27) --
+# divide (ceil) so LIMIT=500 means ~500 requests for EVERY task. Must match
+# the dllm-meta run_bench_* scripts so all suites share identical subsets.
+_limit_for_task () {
+    if [ -z "$LIMIT" ]; then
+        echo ""
+        return 0
+    fi
+    case "$1" in
+        minerva_math) echo $(( (LIMIT + 6) / 7 )) ;;
+        bbh)          echo $(( (LIMIT + 26) / 27 )) ;;
+        *)            echo "$LIMIT" ;;
+    esac
+}
+
 _skip_task () {
     [ -n "$FILTER_TASK" ] && [ "$1" != "$FILTER_TASK" ]
 }
@@ -78,6 +94,9 @@ _launch () {
         return 0
     fi
 
+    local limit_task
+    limit_task=$(_limit_for_task "$task")
+
     echo "[eval] model=$lm_name task=$task variant=$variant fewshot=$fewshot"
     accelerate launch --num_processes "$NUM_PROCESSES" --main_process_port "$PORT" \
         "$eval_script" \
@@ -89,7 +108,7 @@ _launch () {
         --output_path "$folder_task" \
         --log_samples \
         --trust_remote_code \
-        ${LIMIT:+--limit "$LIMIT"} \
+        ${limit_task:+--limit "$limit_task"} \
         "$@" \
         || echo "[warn] failed: $task/$variant -- continuing"
 
