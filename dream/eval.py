@@ -34,7 +34,14 @@ from lm_eval import utils
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
-from lm_eval.models.utils import get_dtype
+try:
+    from lm_eval.models.utils import get_dtype
+except ImportError:
+    # removed from newer lm_eval releases; same semantics as the original helper
+    def get_dtype(dtype):
+        if isinstance(dtype, str) and dtype != "auto":
+            return getattr(torch, dtype)
+        return dtype
 from lm_eval.__main__ import cli_evaluate
 from model.generation_utils_block import DreamGenerationMixin
 import types
